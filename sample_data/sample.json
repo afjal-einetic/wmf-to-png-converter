@@ -1,0 +1,18 @@
+[
+  {
+    "QuestionId": 101,
+    "QuestionText": "<p>Which of the following diagrams represents the vector force balance?</p><p><img class=\"question-img\" style=\"border: 1px solid #ccc;\" data-positionid=\"pos-101\" width=\"300\" height=\"150\" src=\"data:image/x-wmf;base64,AQAAAA==\" alt=\"Vector Force WMF Diagram\" /></p>",
+    "Options": [
+      {
+        "OptionId": "A",
+        "OptionText": "<div>Option A representation: <img src=\"data:image/x-wmf;base64,AQAAAA==\" class=\"option-img\" /></div>",
+        "IsCorrect": true
+      },
+      {
+        "OptionId": "B",
+        "OptionText": "<div>Option B is standard text without image</div>",
+        "IsCorrect": false
+      }
+    ]
+  }
+]

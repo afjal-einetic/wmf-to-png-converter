@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wmf-to-png-converter"
+version = "1.0.0"
+authors = [
+  { name="Afzal", email="afzal@example.com" },
+]
+description = "High-performance offline Python converter for WMF & EMF Base64 images inside JSON HTML to PNG Base64."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Text Processing :: Markup :: HTML",
+    "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+]
+dependencies = [
+    "tqdm>=4.65.0",
+    "colorama>=0.4.6",
+    "Pillow>=10.0.0",
+]
+
+[project.scripts]
+wmf-converter = "main:main"
+
+[project.urls]
+"Homepage" = "https://github.com/afzal/wmf-to-png-converter"
+"Bug Tracker" = "https://github.com/afzal/wmf-to-png-converter/issues"
