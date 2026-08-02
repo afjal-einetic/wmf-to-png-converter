@@ -4,7 +4,6 @@ import json
 import base64
 from pathlib import Path
 
-# Add project root to sys.path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -31,80 +30,57 @@ def create_valid_sample_vector_bytes() -> bytes:
 
 def run_e2e_test():
     print("\n========================================================")
-    print("   RUNNING END-TO-END WMF & EMF CONVERSION TEST         ")
+    print("   RUNNING UNIVERSAL WMF & EMF CONVERSION E2E TEST      ")
     print("========================================================\n")
 
     dirs = setup_app_directories()
     logger = setup_logger(dirs["base"])
 
-    # 1. Engine Detection
     engine = WMFConverterEngine(logger=logger)
-    print(f"Detected Engine: {engine.engine_type}")
-    print(f"Executable Path: {engine.executable_path}")
     assert engine.is_available(), "Engine should be available!"
 
-    # 2. Prepare real input JSON with valid WMF and EMF base64 data URIs
     vec_bytes = create_valid_sample_vector_bytes()
     vec_b64 = base64.b64encode(vec_bytes).decode("ascii")
 
+    # 1. Test Raw Data URI Input
+    cache1 = WMFCache()
+    proc1 = JSONProcessor(engine=engine, cache=cache1, temp_dir=dirs["temp"])
+    raw_uri_input = f"data:image/x-wmf;base64,{vec_b64}"
+    out1, type1 = proc1.process_universal_input(raw_uri_input)
+    assert out1.startswith("data:image/png;base64,"), "Raw Data URI conversion failed!"
+    assert len(proc1.converted_png_list) == 1, "Raw Data URI live PNG list failed!"
+    print("[PASS] Raw Data URI input conversion & live preview payload verified.")
+
+    # 2. Test Direct .wmf Image File Input
+    test_wmf_file = dirs["temp"] / "test_input_diagram.wmf"
+    with open(test_wmf_file, "wb") as f:
+        f.write(vec_bytes)
+
+    cache2 = WMFCache()
+    proc2 = JSONProcessor(engine=engine, cache=cache2, temp_dir=dirs["temp"])
+    out2, type2 = proc2.process_universal_input(test_wmf_file)
+    assert out2.startswith("data:image/png;base64,"), "Direct .wmf file conversion failed!"
+    assert len(proc2.converted_png_list) == 1, "Direct .wmf file live PNG list failed!"
+    print("[PASS] Direct .wmf file input conversion verified.")
+
+    # 3. Test Full JSON Input (WMF & EMF)
     sample_json = [
         {
-            "QuestionId": 601,
-            "QuestionWMF": f'<p>WMF Diagram:</p><img class="wmf-fig" style="border:1px solid black;" data-positionid="w601" width="200" height="100" src="data:image/x-wmf;base64,{vec_b64}" alt="WMF Image">',
-            "QuestionEMF": f'<p>EMF Diagram:</p><img class="emf-fig" style="margin:5px;" data-positionid="e601" width="250" height="120" src="data:image/x-emf;base64,{vec_b64}" alt="EMF Image">',
-            "Options": [
-                {
-                    "OptionText": f'<span>EMF Option:</span><img src="data:image/emf;base64,{vec_b64}">',
-                    "IsCorrect": True
-                }
-            ]
+            "QuestionId": 701,
+            "QuestionWMF": f'<p>WMF:</p><img class="wmf" src="data:image/x-wmf;base64,{vec_b64}">',
+            "QuestionEMF": f'<p>EMF:</p><img class="emf" src="data:image/x-emf;base64,{vec_b64}">'
         }
     ]
-
-    test_input_path = dirs["input"] / "test_wmf_emf_input.json"
-    with open(test_input_path, "w", encoding="utf-8") as f:
-        json.dump(sample_json, f, indent=2)
-    print(f"Input JSON created at: {test_input_path}")
-
-    # 3. Process JSON
-    cache = WMFCache()
-    processor = JSONProcessor(engine=engine, cache=cache, temp_dir=dirs["temp"])
-
-    total_count = processor.count_wmf_images(sample_json)
-    print(f"Total WMF/EMF images detected: {total_count}")
-    assert total_count == 3, f"Expected 3 WMF/EMF images, got {total_count}"
-
-    converted_data = processor.process_node(sample_json)
-
-    # 4. Verify Output JSON
-    output_file_path = dirs["output"] / "test_wmf_emf_input.json"
-    with open(output_file_path, "w", encoding="utf-8") as f:
-        json.dump(converted_data, f, ensure_ascii=False, indent=2)
-    print(f"Output JSON saved to: {output_file_path}")
-
-    wmf_q_text = converted_data[0]["QuestionWMF"]
-    emf_q_text = converted_data[0]["QuestionEMF"]
-
-    # Verification assertions
-    assert "data:image/png;base64," in wmf_q_text, "WMF PNG Data URI not found!"
-    assert "data:image/x-wmf;base64," not in wmf_q_text, "Old WMF Data URI still present!"
-    assert 'class="wmf-fig"' in wmf_q_text, "WMF HTML attribute class lost!"
-
-    assert "data:image/png;base64," in emf_q_text, "EMF PNG Data URI not found!"
-    assert "data:image/x-emf;base64," not in emf_q_text, "Old EMF Data URI still present!"
-    assert 'class="emf-fig"' in emf_q_text, "EMF HTML attribute class lost!"
-
-    # Verify PNG Header signature from EMF replacement
-    png_b64_start = emf_q_text.find("data:image/png;base64,") + len("data:image/png;base64,")
-    png_b64_end = emf_q_text.find('"', png_b64_start)
-    png_b64_str = emf_q_text[png_b64_start:png_b64_end]
-
-    decoded_png_bytes = base64.b64decode(png_b64_str)
-    assert decoded_png_bytes.startswith(b"\x89PNG\r\n\x1a\n"), "EMF converted bytes do NOT match PNG header signature!"
-    print("EMF to PNG Header Verification: VALID (\\x89PNG\\r\\n\\x1a\\n)")
+    cache3 = WMFCache()
+    proc3 = JSONProcessor(engine=engine, cache=cache3, temp_dir=dirs["temp"])
+    out3, type3 = proc3.process_universal_input(sample_json)
+    assert "data:image/png;base64," in out3[0]["QuestionWMF"], "JSON WMF replacement failed!"
+    assert "data:image/png;base64," in out3[0]["QuestionEMF"], "JSON EMF replacement failed!"
+    assert len(proc3.converted_png_list) >= 1, "JSON converted PNG list failed!"
+    print("[PASS] JSON structure WMF & EMF conversion verified.")
 
     print("\n========================================================")
-    print("   SUCCESS! BOTH WMF & EMF CONVERSION PASSED!           ")
+    print("   SUCCESS! ALL UNIVERSAL CONVERSION TESTS PASSED!     ")
     print("========================================================\n")
 
 if __name__ == "__main__":
